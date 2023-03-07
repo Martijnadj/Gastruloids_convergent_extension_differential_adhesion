@@ -1,0 +1,70 @@
+# Cellular Potts parameters
+T = 25
+target_area = 100
+target_length = 10
+lambda = 5
+lambda2 = 5
+Jtable = J.dat
+conn_diss = 0
+vecadherinknockout = false
+chemotaxis = 0
+extensiononly = false
+border_energy = 100
+
+# note: do not change the following parameters for "long" cells (lambda2>0)
+neighbours = 2
+periodic_boundaries = true
+
+# PDE parameters
+n_chem = 1
+diff_coeff = 1e-13
+decay_rate = 1.8e-4
+secr_rate = 0
+saturation = 0
+dt = 2.0
+dx = 2.0e-6
+pde_its = 15
+
+# initial conditions
+n_init_cells = 200
+size_init_cells = 10
+sizex = 500
+sizey = 500
+divisions = 0
+mcs = 100000
+rseed = -1
+
+subfield = 6.0
+relaxation = 100000000
+
+conv_ext = true
+theta_max = 45
+r_max = 2
+max_links = 3
+lambda_force = 20
+t_interval = 20
+
+memory = 0.99
+infl_redonred = 1
+infl_yellowonyellow = 1
+infl_redonyellow = 1
+infl_yellowonred = 1
+pulling_method = 1
+
+mean_divtime_epi = 100000000000
+mean_divtime_meso = 1000000000000
+mean_difftime = 4000000
+begin_diff = 100000000
+end_diff = 150000
+decrease_size_div = false
+
+frac_yellow = 0.5
+
+# output
+storage_stride = 100	
+graphics = true
+store = true
+datadir = output
+
+
+

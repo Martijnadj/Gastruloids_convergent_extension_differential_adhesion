@@ -67,7 +67,7 @@ def load():
         if len(ims.shape) > 2:
             ims = np.max(ims, 2)
         xy_num = 1
-    elif f.endswith('.tif') or f.endswith('.TIF') or f.endswith('.tiff') or f.endswith('.TIFF'):
+    elif files[i].endswith('.tif') or files[i].endswith('.TIF') or files[i].endswith('.tiff') or files[i].endswith('.TIFF'):
         loc_new = loc + "/" + files[i]
         im = Image.open(loc_new)
         ims = np.array(im)

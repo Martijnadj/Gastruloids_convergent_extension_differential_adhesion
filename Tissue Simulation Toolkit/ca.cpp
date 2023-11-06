@@ -200,64 +200,60 @@ void CellularPotts::IndexShuffle()
 	}
 }
 
-void CellularPotts::InitializeEdgeList(void){
-  edgelist= new int[(par.sizex-2) * (par.sizey-2) * nbh_level[par.neighbours]];
-  orderedgelist= new int[(par.sizex-2) * (par.sizey-2) * nbh_level[par.neighbours]];
-  sizeedgelist = 0;
-  int pixel;
-  int neighbour;
-  int x, y;
-  int xp, yp;
-  int c, cp;
-  
-  //Initialize both edgelist and orderedgelist to have -1 everywhere
-  for (int k=0; k< (par.sizex-2) * (par.sizey-2) * nbh_level[par.neighbours]; k++){
-    edgelist[k] = -1;
-    orderedgelist[k] = -1;
-  }
-  
-  for (int k=0; k< (par.sizex-2) * (par.sizey-2) * nbh_level[par.neighbours]; k++){
-    //Loop over all edges
-    //Outermost loop is over the y-coordinate
-    //Middle loop is over the x-coordinate
-    //Innermost loop is over the neighbours.
-    
-    pixel = k/nbh_level[par.neighbours];
-    neighbour = k%nbh_level[par.neighbours]+1;    
-    x = pixel%(sizex-2)+1;
-    y = pixel/(sizex-2)+1;
-    c = sigma[x][y];      
-    xp = nx[neighbour]+x;
-    yp = ny[neighbour]+y;
-      
-    if (par.periodic_boundaries) {
-      // since we are asynchronic, we cannot just copy the borders once 
-      // every MCS      
-      if (xp<=0)
-        xp=sizex-2+xp;
-      if (yp<=0)
-        yp=sizey-2+yp;
-      if (xp>=sizex-1)
-        xp=xp-sizex+2;
-      if (yp>=sizey-1)
-        yp=yp-sizey+2;
-      cp=sigma[xp][yp];
-      }
-    else if (xp<=0 || yp<=0 || xp>=sizex-1 || yp>=sizey-1)
-      cp=-1;
-    else
-      cp=sigma[xp][yp];
-    if (cp != c && cp != -1){
-      //if a pixel and its neighbour have a different sigma, add a unique 
-      //interger to edgelist       
-      edgelist[k] = sizeedgelist;
-      //also add a unique integer to the end of orderedgelist, making a bijection between the lists
-      orderedgelist[sizeedgelist] = k;
-      sizeedgelist ++;
-    }
-  } 
-}
+void CellularPotts::InitializeEdgeList(void)
+{
+	edgelist = new int[(par.sizex - 2) * (par.sizey - 2) * nbh_level[par.neighbours]];
+	orderedgelist = new int[(par.sizex - 2) * (par.sizey - 2) * nbh_level[par.neighbours]];
+	sizeedgelist = 0;
+	int pixel;
+	int neighbour;
+	int x, y;
+	int xp, yp;
+	int c, cp;
+	for (int k = 0; k < (par.sizex - 2) * (par.sizey - 2) * nbh_level[par.neighbours]; k++)
+	{
+		edgelist[k] = -1;
+		orderedgelist[k] = -1;
+	}
+	for (int k = 0; k < (par.sizex - 2) * (par.sizey - 2) * nbh_level[par.neighbours]; k++)
+	{
+		pixel = k / nbh_level[par.neighbours];
+		neighbour = k % nbh_level[par.neighbours] + 1;
+		x = pixel % (sizex - 2) + 1;
+		y = pixel / (sizex - 2) + 1;
+		c = sigma[x][y];
+		xp = nx[neighbour] + x;
+		yp = ny[neighbour] + y;
 
+		if (par.periodic_boundaries)
+		{
+
+			// since we are asynchronic, we cannot just copy the borders once
+			// every MCS
+
+			if (xp <= 0)
+				xp = sizex - 2 + xp;
+			if (yp <= 0)
+				yp = sizey - 2 + yp;
+			if (xp >= sizex - 1)
+				xp = xp - sizex + 2;
+			if (yp >= sizey - 1)
+				yp = yp - sizey + 2;
+
+			cp = sigma[xp][yp];
+		}
+		else if (xp <= 0 || yp <= 0 || xp >= sizex - 1 || yp >= sizey - 1)
+			cp = -1;
+		else
+			cp = sigma[xp][yp];
+		if (cp != c && cp != -1)
+		{
+			edgelist[k] = sizeedgelist;
+			orderedgelist[sizeedgelist] = k;
+			sizeedgelist++;
+		}
+	}
+}
 
 double sat(double x)
 {
@@ -454,55 +450,94 @@ void CellularPotts::RefreshLinks(void)
 		// Adjust polarizations according to your neighbours.
 		if (number_of_links)
 		{
+			bool belmonte = false; //Use the repolarization method from Belmonte et al.?
+
+
+			
 			z = cell->begin();
 			++z;
 			double Avgpolarization = 0;
 			double AvgX = 0;
 			double AvgY = 0;
-			for (; z != cell->end(); z++)
-			{
-				if (c->Links[z->Sigma()] && c->tau == 1 && z->tau == 1)
-				{
-					AvgX += cos(z->polarization) * par.infl_redonred;
-					AvgY += sin(z->polarization) * par.infl_redonred;
-				}
-				else if (c->Links[z->Sigma()] && c->tau == 1 && z->tau == 2)
-				{
-					AvgX += cos(z->polarization) * par.infl_yellowonred;
-					AvgY += sin(z->polarization) * par.infl_yellowonred;
-				}
-				else if (c->Links[z->Sigma()] && c->tau == 2 && z->tau == 1)
-				{
-					AvgX += cos(z->polarization) * par.infl_redonyellow;
-					AvgY += sin(z->polarization) * par.infl_redonyellow;
-				}
-				else if (c->Links[z->Sigma()] && c->tau == 2 && z->tau == 2)
-				{
-					AvgX += cos(z->polarization) * par.infl_yellowonyellow;
-					AvgY += sin(z->polarization) * par.infl_yellowonyellow;
+			double distance = 0;
+			if (belmonte){
+
+				for (; z != cell->end(); z++){	
+					if (c->Links[z->Sigma()]){
+						distance = sqrt(pow(c->getCenterX() - z->getCenterX(),2) + pow(c->getCenterY() - z->getCenterY(),2));
+						if (c->tau == 1 && z->tau == 1)
+						{
+							AvgX += (z->getCenterX()-c->getCenterX()) / distance * par.infl_redonred;
+							AvgY += (z->getCenterY()-c->getCenterY()) / distance * par.infl_redonred;
+						}
+						else if (c->tau == 1 && z->tau == 2)
+						{
+							AvgX += (z->getCenterX()-c->getCenterX()) / distance * par.infl_yellowonred;
+							AvgY += (z->getCenterY()-c->getCenterY()) / distance * par.infl_yellowonred;
+						}
+						else if (c->tau == 2 && z->tau == 1)
+						{
+							AvgX += (z->getCenterX()-c->getCenterX()) / distance * par.infl_redonyellow;
+							AvgY += (z->getCenterY()-c->getCenterY()) / distance * par.infl_redonyellow;
+						}
+						else if (c->tau == 2 && z->tau == 2)
+						{
+							AvgX += (z->getCenterX()-c->getCenterX()) / distance * par.infl_yellowonyellow;
+							AvgY += (z->getCenterY()-c->getCenterY()) / distance * par.infl_yellowonyellow;
+						}
+					}
 				}
 			}
-			if (AvgX > 0 && AvgY > 0)
-				Avgpolarization = atan(AvgY / AvgX);
-			else if (AvgX < 0 && AvgY > 0)
-				Avgpolarization = atan(-AvgX / AvgY) + PI / 2;
-			else if (AvgX < 0 && AvgY < 0)
-				Avgpolarization = atan(AvgY / AvgX) + PI;
-			else
-				Avgpolarization = atan(-AvgX / AvgY) + 3 * PI / 2;
 
-			double NewX, NewY;
-			NewX = par.memory * cos(c->polarization) + (1 - par.memory) * cos(Avgpolarization);
-			NewY = par.memory * sin(c->polarization) + (1 - par.memory) * sin(Avgpolarization);
+			else{
+				for (; z != cell->end(); z++)
+				{
+					if (c->Links[z->Sigma()] && c->tau == 1 && z->tau == 1)
+					{
+						AvgX += cos(z->polarization) * par.infl_redonred;
+						AvgY += sin(z->polarization) * par.infl_redonred;
+					}
+					else if (c->Links[z->Sigma()] && c->tau == 1 && z->tau == 2)
+					{
+						AvgX += cos(z->polarization) * par.infl_yellowonred;
+						AvgY += sin(z->polarization) * par.infl_yellowonred;
+					}
+					else if (c->Links[z->Sigma()] && c->tau == 2 && z->tau == 1)
+					{
+						AvgX += cos(z->polarization) * par.infl_redonyellow;
+						AvgY += sin(z->polarization) * par.infl_redonyellow;
+					}
+					else if (c->Links[z->Sigma()] && c->tau == 2 && z->tau == 2)
+					{
+						AvgX += cos(z->polarization) * par.infl_yellowonyellow;
+						AvgY += sin(z->polarization) * par.infl_yellowonyellow;
+					}
+				}
+			}
 
-			if (NewX > 0 && NewY > 0)
-				c->polarization = atan(NewY / NewX);
-			else if (NewX < 0 && NewY > 0)
-				c->polarization = atan(-NewX / NewY) + PI / 2;
-			else if (NewX < 0 && NewY < 0)
-				c->polarization = atan(NewY / NewX) + PI;
-			else
-				c->polarization = atan(-NewX / NewY) + 3 * PI / 2;
+				if (AvgX > 0 && AvgY > 0)
+					Avgpolarization = atan(AvgY / AvgX);
+				else if (AvgX < 0 && AvgY > 0)
+					Avgpolarization = atan(-AvgX / AvgY) + PI / 2;
+				else if (AvgX < 0 && AvgY < 0)
+					Avgpolarization = atan(AvgY / AvgX) + PI;
+				else
+					Avgpolarization = atan(-AvgX / AvgY) + 3 * PI / 2;
+
+				double NewX, NewY;
+				NewX = par.memory * cos(c->polarization) + (1 - par.memory) * cos(Avgpolarization);
+				NewY = par.memory * sin(c->polarization) + (1 - par.memory) * sin(Avgpolarization);
+
+				if (NewX > 0 && NewY > 0)
+					c->polarization = atan(NewY / NewX);
+				else if (NewX < 0 && NewY > 0)
+					c->polarization = atan(-NewX / NewY) + PI / 2;
+				else if (NewX < 0 && NewY < 0)
+					c->polarization = atan(NewY / NewX) + PI;
+				else
+					c->polarization = atan(-NewX / NewY) + 3 * PI / 2;
+
+			
 		}
 	}
 }
@@ -865,165 +900,165 @@ void CellularPotts::FreezeAmoebae(void)
 
 #include <fstream>
 //! Monte Carlo Step. Returns summed energy change
-int CellularPotts::AmoebaeMove(PDE *PDEfield) {
-  int p;
-  float loop;
-  thetime++;
-  int SumDH=0;
-  
-  int positionedge;
-  int targetedge;
-  int targetsite;
-  int targetneighbour;
-  int x,y;
-  int xp,yp;
-  
-  int H_diss;
-  int D_H;
-  
-  int edgeadjusting;
-  int xn, yn; //neighbour cells
- 
-  if (frozen) 
-    return 0;
+int CellularPotts::AmoebaeMove(PDE *PDEfield)
+{
+	double loop, p;
+	thetime++;
+	int SumDH = 0;
 
-  loop = static_cast<float>(sizeedgelist) / static_cast<float>(n_nb);
-  for (int i = 0; i < loop; i++){
-    // take a random entry of the edgelist
-    positionedge = (int)(RANDOM()*sizeedgelist); 
-    // find the corresponding edge
-    targetedge = orderedgelist[positionedge];
-    // find the lattice site corresponding to this edge
-    targetsite = targetedge / n_nb;
-    // find the neighbour corresponding to this edge
-    targetneighbour = (targetedge % n_nb)+1;
-    
-    // find the x and y coordinate corresponding to the target site
-    x = targetsite%(sizex-2)+1;
-    y = targetsite/(sizex-2)+1; 
-    
-    // find the neighbouring site corresponding to this edge
-    xp = nx[targetneighbour]+x;
-    yp = ny[targetneighbour]+y;
-    if (par.periodic_boundaries) {
-       // since we are asynchronic, we cannot just copy the borders once 
-       // every MCS
-      if (xp<=0)
-        xp=sizex-2+xp;
-      if (yp<=0)
-        yp=sizey-2+yp;
-      if (xp>=sizex-1)
-        xp=xp-sizex+2;
-      if (yp>=sizey-1)
-        yp=yp-sizey+2;
-    }
-    
-    // connectivity dissipation:
-    H_diss=0;
-    if (!ConnectivityPreservedP(x,y)) 
-      H_diss=par.conn_diss;
-    
-    D_H=DeltaH(x,y,xp,yp,PDEfield);
-    
-    if ((p=CopyvProb(D_H,H_diss))>0) {
-      ConvertSpin ( x,y,xp,yp ); //sigma(x,y) will get the same value as sigma(xp,yp)
-      for (int j = 1; j <= n_nb; j++){
-        xn = nx[j]+x; 
-        yn = ny[j]+y;
-        edgeadjusting = targetsite*n_nb+j-1; 
-        
-        if (par.periodic_boundaries) {  
-        // since we are asynchronic, we cannot just copy the borders once 
-        // every MCS
-          if (xn<=0)
-            xn=sizex-2+xn;
-          if(yn<=0)
-            yn=sizey-2+yn;
-          if (xn>=sizex-1)
-            xn=xn-sizex+2;
-          if (yn>=sizey-1)
-            yn=yn-sizey+2;
-        } 
-        if (xn>0 && yn>0 && xn<sizex-1 && yn<sizey-1){//if the neighbour site is within the lattice
-          if (edgelist[edgeadjusting] == -1 && sigma[xn][yn] != sigma[x][y]){ 
-            //if there should be an edge between (x,y) and (xn,yn) and it is not there yet, add it
-            AddEdgeToEdgelist(edgeadjusting);
-            //adjust loop because two edges were removeed
-            loop += 2.0/n_nb;
-            
-          }
-          if (edgelist[edgeadjusting] != -1 && sigma[xn][yn] == sigma[x][y]){
-            //if there should be no edge between (x,y) and (xn,yn), but there is an edge remove it        
-            RemoveEdgeFromEdgelist(edgeadjusting); 
-            //adjust loop because two edges were removed
-            loop -= 2.0/n_nb;   
-          }             
-        }
-      }
-      SumDH+=D_H;     
-    }
-  } 
-  return SumDH;  
+	if (frozen)
+		return 0;
+
+	int positionedge;
+	int targetedge;
+	int targetsite;
+	int targetneighbour;
+	int x, y;
+	int xp, yp;
+	int k, kp;
+
+	int H_diss;
+	int D_H;
+	int nr_accepted = 0;
+
+	int edgeadjusting;
+	int xn, yn; // neighbour cells
+	ofstream myfile;
+
+	loop = sizeedgelist / n_nb;
+	for (int it = 0; it < loop; it++)
+	{
+		positionedge = (int)(RANDOM() * sizeedgelist); // take an entry of the edgelist
+		targetedge = orderedgelist[positionedge];
+		targetsite = targetedge / n_nb;
+		targetneighbour = (targetedge % n_nb) + 1;
+
+		x = targetsite % (sizex - 2) + 1;
+		y = targetsite / (sizex - 2) + 1;
+		k = sigma[x][y];
+
+		xp = nx[targetneighbour] + x;
+		yp = ny[targetneighbour] + y;
+		if (par.periodic_boundaries)
+		{
+
+			// since we are asynchronic, we cannot just copy the borders once
+			// every MCS
+
+			if (xp <= 0)
+				xp = sizex - 2 + xp;
+			if (yp <= 0)
+				yp = sizey - 2 + yp;
+			if (xp >= sizex - 1)
+				xp = xp - sizex + 2;
+			if (yp >= sizey - 1)
+				yp = yp - sizey + 2;
+		}
+		kp = sigma[xp][yp]; // by construction of the edgelist, xp,yp can't be a boundary state.
+
+		// connectivity dissipation:
+		H_diss = 0;
+		if (!ConnectivityPreservedP(x, y))
+			H_diss = par.conn_diss;
+
+		D_H = DeltaH(x, y, xp, yp, PDEfield);
+
+		if ((p = CopyvProb(D_H, H_diss)) > 0)
+		{
+			ConvertSpin(x, y, xp, yp); // sigma(x,y) will get the same value as sigma(xp,yp)
+			nr_accepted++;
+
+			for (int i = 1; i <= n_nb; i++)
+			{
+				xn = nx[i] + x;
+				yn = ny[i] + y;
+				edgeadjusting = targetsite * n_nb + i - 1;
+
+				if (par.periodic_boundaries)
+				{
+					// since we are asynchronic, we cannot just copy the borders once
+					// every MCS
+					if (xn <= 0)
+						xn = sizex - 2 + xn;
+					if (yn <= 0)
+						yn = sizey - 2 + yn;
+					if (xn >= sizex - 1)
+						xn = xn - sizex + 2;
+					if (yn >= sizey - 1)
+						yn = yn - sizey + 2;
+				}
+				if (xn > 0 && yn > 0 && xn < sizex - 1 && yn < sizey - 1)
+				{ // if the neighbour site is within the lattice
+					if (edgelist[edgeadjusting] == -1 && sigma[xn][yn] != sigma[x][y])
+					{ // if we should add the edge to the edgelist, add it
+						AddEdgeToEdgelist(edgeadjusting);
+						loop += (double)2 / n_nb;
+					}
+					if (edgelist[edgeadjusting] != -1 && sigma[xn][yn] == sigma[x][y])
+					{ // if the sites have the same celltype and they have an edge, remove it
+						RemoveEdgeFromEdgelist(edgeadjusting);
+						loop -= (double)2 / n_nb;
+					}
+				}
+			}
+			SumDH += D_H;
+		}
+	}
+	myfile.open("images_long/Sum_deltaH.txt", std::ios_base::app);
+	myfile << SumDH << endl;
+	myfile.close();
+	myfile.open("images_long/Avg_deltaH.txt", std::ios_base::app);
+	myfile << double(SumDH) / double(nr_accepted) << endl;
+	myfile.close();
+	return SumDH;
 }
 
-void CellularPotts::AddEdgeToEdgelist(int edge) {//add an edge to the end of edgelist
-  int counteredge = CounterEdge(edge);  
+void CellularPotts::AddEdgeToEdgelist(int edge)
+{
+	int counteredge = CounterEdge(edge);
 
-  //assign a unique integer to position 'edge' in the edgelist
-  edgelist[edge] = sizeedgelist;
-  //assign a unique integer at the end of orderedgelist, maintaining the bijection between the lists
-  orderedgelist[sizeedgelist] = edge;
-  //Increase the size of the array
-  sizeedgelist++;
+	edgelist[edge] = sizeedgelist;
+	orderedgelist[sizeedgelist] = edge;
+	sizeedgelist++;
 
-  //Repeat for the counteredge
-  edgelist[counteredge] = sizeedgelist;
-  orderedgelist[sizeedgelist] = counteredge;
-  sizeedgelist++;
+	edgelist[counteredge] = sizeedgelist;
+	orderedgelist[sizeedgelist] = counteredge;
+	sizeedgelist++;
 }
 
-void CellularPotts::RemoveEdgeFromEdgelist(int edge) { //remove an edge from the edgelist
-  int counteredge = CounterEdge(edge);  
+void CellularPotts::RemoveEdgeFromEdgelist(int edge)
+{ // remove the site from the edgelist and rearrange a bit if needed
+	int counteredge = CounterEdge(edge);
 
-  if(edgelist[edge] != sizeedgelist-1){ //if edge is not the last edge in orderedgelist
-    // move the edge in the last position to the position of the edge that must be deleted
-    orderedgelist[edgelist[edge]] = orderedgelist[sizeedgelist-1];
-    edgelist[orderedgelist[sizeedgelist-1]] = edgelist[edge];
-  }
-  // remove the edge from the edgelist
-  edgelist[edge] = -1;
-  // free the last position of orderedgelist
-  orderedgelist[sizeedgelist-1] = -1;
-  //decrease the size of the edgelist
-  sizeedgelist--;
-  
-  //Repeat for counteredge
-  if(edgelist[counteredge] != sizeedgelist-1){ 
-    orderedgelist[edgelist[counteredge]] = orderedgelist[sizeedgelist-1];
-    edgelist[orderedgelist[sizeedgelist-1]] = edgelist[counteredge];
-  }
-  edgelist[counteredge] = -1;
-  orderedgelist[sizeedgelist-1] = -1;
-  sizeedgelist--;
+	if (edgelist[edge] != sizeedgelist - 1)
+	{ // if edge is not last one in edgelist
+		orderedgelist[edgelist[edge]] = orderedgelist[sizeedgelist - 1];
+		edgelist[orderedgelist[sizeedgelist - 1]] = edgelist[edge];
+	}
+	edgelist[edge] = -1;
+	orderedgelist[sizeedgelist - 1] = -1;
+	sizeedgelist--;
+	if (edgelist[counteredge] != sizeedgelist - 1)
+	{ // if counteredge is not last one in edgelist
+		orderedgelist[edgelist[counteredge]] = orderedgelist[sizeedgelist - 1];
+		edgelist[orderedgelist[sizeedgelist - 1]] = edgelist[counteredge];
+	}
+	edgelist[counteredge] = -1;
+	orderedgelist[sizeedgelist - 1] = -1;
+	sizeedgelist--;
 }
 
 int CellularPotts::CounterEdge(int edge){
-  // For an edge from (x,y) to (xn,yn), this function returns the edge from (xn,yn) to (x,y)
-  
-  // find the corresponding lattice site and neighbour for the edge.
   int which_site = edge / n_nb;
   int which_neighbour = edge % n_nb + 1;
-  int counterneighbour = 0;
+  int counterneighbour = 3;
 
-  // find the x and y coordinate corresponding to the lattice site
   int x = which_site%(sizex-2)+1;
   int y = which_site/(sizex-2)+1; 
 
-  // find the x and y coordinate corresponding at the other end of the edge
   int xp = nx[which_neighbour]+x; 
   int yp = ny[which_neighbour]+y; 
 
-  // correct for periodic boundaries of necessary
   if (par.periodic_boundaries) {  
     // since we are asynchronic, we cannot just copy the borders once 
     // every MCS
@@ -1036,13 +1071,11 @@ int CellularPotts::CounterEdge(int edge){
     if (yp>=sizey-1)
       yp=yp-sizey+2;
   }
-  // lattice site corresponding to other site of the edge
+
   int neighbourlocation = xp-1 + (yp-1)*(par.sizex-2);
-  
-  // find the neighbour pointing the other direction
+
   const int counterneighbourlist[20] = {3, 4, 1, 2, 7, 8, 5, 6, 11, 12, 9, 10, 17, 18, 19, 20, 13, 14, 15, 16};
   counterneighbour = counterneighbourlist[ which_neighbour - 1 ];
-  // compute the final counteredge
   int counteredge = neighbourlocation * n_nb + counterneighbour-1;
   return counteredge;
 }
